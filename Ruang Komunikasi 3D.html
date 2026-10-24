@@ -1,0 +1,938 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Ruang Komunikasi 3D</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: panggung 3D di kiri, panel misi di kanan; di ponsel ditumpuk. Satu dunia visual: ruang lab gelap dengan 7 warna unsur. */
+:root{
+  --bg:#0b1020; --panel:#121a31; --panel2:#19234a; --line:#2b365c; --fg:#e9edfa; --muted:#9aa7cc;
+  --sumber:#4f8cff; --pesan:#ffb547; --saluran:#4fd18b; --penerima:#a493ff; --efek:#ff7a90; --umpan:#22c3d6; --gangguan:#ff6b6b;
+  --ok:#5be28a; --warn:#ffb547;
+  --display:'Bricolage Grotesque',system-ui,sans-serif; --body:'IBM Plex Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 var(--body);
+  padding-block:0;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+#app{height:100%;display:flex;flex-direction:column;gap:10px;padding-block:10px}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.mark{width:34px;height:34px;flex:none;border-radius:10px;background:conic-gradient(from 200deg,var(--sumber),var(--pesan),var(--saluran),var(--penerima),var(--efek),var(--sumber));position:relative}
+.mark::after{content:"";position:absolute;inset:9px;border-radius:50%;background:var(--bg)}
+h1{font:700 19px/1.1 var(--display);margin:0;letter-spacing:.1px}
+.sub{margin:2px 0 0;font:500 11px var(--mono);color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+#steps{display:flex;gap:6px;flex-wrap:wrap;flex:1;min-width:0}
+.step{appearance:none;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:999px;padding:5px 12px;font:500 12.5px var(--body);cursor:pointer;display:flex;gap:6px;align-items:center}
+.step i{font:500 11px var(--mono);font-style:normal;opacity:.8}
+.step[aria-current="step"]{background:var(--panel2);color:var(--fg);border-color:#4a5a92}
+.step.done i{color:var(--ok)}
+.step:disabled{opacity:.4;cursor:not-allowed}
+.tools{display:flex;gap:8px;align-items:center}
+#clock{font:500 13px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums;min-width:48px;text-align:right}
+main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 410px;gap:12px}
+#stage{position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;min-height:260px;background:#0b1020}
+#c{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+#c:active{cursor:grabbing}
+.hud{position:absolute;left:10px;right:10px;pointer-events:none;display:flex;gap:8px;align-items:flex-start}
+.hud.top{top:10px}
+.hud.bot{bottom:10px;align-items:flex-end;justify-content:space-between}
+.pill{pointer-events:auto;background:rgba(11,16,32,.78);border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:12.5px;color:var(--fg);backdrop-filter:blur(6px)}
+.pill.mut{color:var(--muted);pointer-events:none}
+#cap{font-weight:500}
+.sbtn{pointer-events:auto;cursor:pointer;appearance:none;border:1px solid var(--line);background:rgba(11,16,32,.78);color:var(--fg);border-radius:10px;padding:6px 10px;font:500 12.5px var(--body)}
+.sbtn:hover{border-color:#5a6caa}
+#panel{overflow-y:auto;min-height:0;border:1px solid var(--line);border-radius:14px;background:var(--panel);padding:16px;display:flex;flex-direction:column;gap:12px}
+.kicker{font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0}
+h2{font:700 22px/1.15 var(--display);margin:0;text-wrap:balance}
+h3{font:600 14px var(--body);margin:0}
+p{margin:0}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.card.ok{border-color:#2f7a4c}
+.card.bad{border-color:#8a4350}
+.btn{appearance:none;cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--fg);border-radius:10px;padding:9px 14px;font:600 14px var(--body)}
+.btn:hover{border-color:#5a6caa}
+.btn.primary{background:var(--saluran);color:#06210f;border-color:transparent}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
+.btn.ghost{background:transparent}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{appearance:none;cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--fg);border-radius:8px;padding:5px 9px;font:500 12.5px var(--body);display:flex;gap:6px;align-items:center}
+.chip .dot{width:9px;height:9px;border-radius:50%;background:var(--c,var(--muted))}
+.chip.seen{border-color:var(--c)}
+.chip.seen::after{content:"✓";color:var(--ok);font-size:12px}
+.chip.on{background:var(--panel);border-color:var(--fg)}
+.bar{height:10px;border-radius:6px;background:#0b1020;border:1px solid var(--line);overflow:hidden}
+.bar>b{display:block;height:100%;background:linear-gradient(90deg,var(--gangguan),var(--pesan),var(--saluran));transition:width .4s}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{flex:1;appearance:none;border:0;background:transparent;color:var(--muted);padding:7px 6px;font:500 13px var(--body);cursor:pointer}
+.seg button.on{background:var(--panel);color:var(--fg)}
+.seg button+button{border-left:1px solid var(--line)}
+.tog{display:flex;gap:10px;align-items:center;cursor:pointer}
+.tog input{accent-color:var(--umpan);width:18px;height:18px}
+.log{font:500 12px/1.5 var(--mono);color:var(--muted);display:flex;flex-direction:column;gap:3px}
+.log li{list-style:none}
+ul.log{margin:0;padding:0}
+.tag{display:inline-block;font:500 11px var(--mono);border:1px solid var(--line);border-radius:6px;padding:1px 6px;color:var(--muted)}
+.opt{appearance:none;text-align:left;cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--fg);border-radius:10px;padding:9px 12px;font:500 14px/1.4 var(--body)}
+.opt:hover:not(:disabled){border-color:#5a6caa}
+.opt.right{border-color:var(--ok);background:#12301f}
+.opt.wrong{border-color:var(--gangguan);background:#35161c}
+.opts{display:flex;flex-direction:column;gap:7px}
+.stat{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.stat .card{gap:2px}
+.stat b{font:700 22px var(--display)}
+.dots{display:flex;gap:5px}
+.dots i{width:22px;height:5px;border-radius:3px;background:var(--line)}
+.dots i.on{background:var(--saluran)}
+.dots i.cur{background:var(--pesan)}
+.dots i.bad{background:var(--gangguan)}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{border-bottom:1px solid var(--line);padding:6px 6px;text-align:left;vertical-align:top}
+th{font:500 11px var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.scroll-x{overflow-x:auto}
+#stage.vr{position:fixed;inset:0;z-index:100;border-radius:0;border:0}
+#vrui{display:none}
+#stage.vr #vrui{display:block}
+#stage.vr .hud{display:none}
+.vrcap{position:absolute;bottom:14%;width:50%;text-align:center;color:#fff;font:600 14px var(--body);padding:0 8%;text-shadow:0 1px 3px #000;pointer-events:none}
+.vrcap.l{left:0}.vrcap.r{left:50%}
+.ret{position:absolute;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border:2px solid #fff;border-radius:50%;opacity:.9;pointer-events:none}
+.ret.l{left:25%}.ret.r{left:75%}
+#vrexit{position:absolute;top:calc(10px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:3}
+.nogl{padding:24px;text-align:center;color:var(--muted)}
+@media (max-width:880px){
+  main{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(250px,42%) minmax(0,1fr)}
+  h1{font-size:17px}
+  .sub{display:none}
+  header{flex-wrap:wrap}
+  .brand{flex:1}
+  .tools{order:2}
+  #steps{order:3;flex:1 1 100%;flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px}
+  .step{white-space:nowrap;flex:none}
+  .hud.top{flex-wrap:wrap}
+  .hud.bot .pill.mut{display:none}
+  .hud.bot{justify-content:flex-end}
+  .pill{font-size:12px;padding:5px 8px}
+}
+@media (prefers-reduced-motion:reduce){.bar>b{transition:none}}
+:focus-visible{outline:2px solid var(--pesan);outline-offset:2px}
+</style>
+
+<div id="app">
+  <header>
+    <div class="brand"><div class="mark"></div><div><h1>Ruang Komunikasi 3D</h1><p class="sub">Pengantar Ilmu Komunikasi · Bab III</p></div></div>
+    <nav id="steps" aria-label="Misi"></nav>
+    <div class="tools"><span id="clock" title="Waktu belajar">00:00</span></div>
+  </header>
+  <main>
+    <section id="stage" aria-label="Ruang 3D">
+      <canvas id="c"></canvas>
+      <div class="hud top"><div class="pill" id="mission"></div><div class="pill mut" id="cap" hidden></div></div>
+      <div class="hud bot">
+        <div class="pill mut small">Geser: putar · Cubit atau gulir: zoom · Ketuk objek</div>
+        <div class="row" style="justify-content:flex-end">
+          <button class="sbtn" id="camReset" type="button">Reset kamera</button>
+          <button class="sbtn" id="vrBtn" type="button">Mode VR</button>
+        </div>
+      </div>
+      <div id="vrui">
+        <div class="ret l"></div><div class="ret r"></div>
+        <div class="vrcap l"></div><div class="vrcap r"></div>
+        <button class="sbtn" id="vrexit" type="button">Keluar VR</button>
+      </div>
+    </section>
+    <aside id="panel" aria-live="polite"></aside>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(()=>{
+'use strict';
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+
+/* ===================== DATA MATERI (Modul Bab III) ===================== */
+const KEYS=['sumber','pesan','saluran','penerima','efek','umpanbalik','gangguan'];
+const COL={sumber:0x4f8cff,pesan:0xffb547,saluran:0x4fd18b,penerima:0xa493ff,efek:0xff7a90,umpanbalik:0x22c3d6,gangguan:0xff6b6b};
+const HEX=k=>'#'+COL[k].toString(16).padStart(6,'0');
+const NAMA={sumber:'Sumber (Komunikator)',pesan:'Pesan',saluran:'Saluran (Media)',penerima:'Penerima (Komunikan)',efek:'Efek',umpanbalik:'Umpan Balik',gangguan:'Gangguan (Noise)'};
+const PENDEK={sumber:'Sumber',pesan:'Pesan',saluran:'Saluran',penerima:'Penerima',efek:'Efek',umpanbalik:'Umpan balik',gangguan:'Gangguan'};
+const INFO={
+ sumber:{def:'Pihak yang mengawali dan menyampaikan pesan. Dapat berupa individu, kelompok, organisasi, lembaga, maupun pemerintah.',contoh:'Dosen yang mengumumkan jadwal perkuliahan.',ciri:'Figur biru dengan pengeras suara.'},
+ pesan:{def:'Simbol verbal maupun nonverbal yang mewakili gagasan, perasaan, atau informasi.',contoh:'"Pertemuan minggu depan secara online."',ciri:'Gelembung percakapan jingga yang melayang.'},
+ saluran:{def:'Sarana yang digunakan untuk menyampaikan pesan, misalnya suara, tulisan, atau media digital.',contoh:'WhatsApp grup kelas.',ciri:'Terowongan dengan cincin hijau di antara sumber dan penerima.'},
+ penerima:{def:'Pihak yang menerima dan menginterpretasikan pesan.',contoh:'Mahasiswa.',ciri:'Dua figur ungu di sisi kanan.'},
+ efek:{def:'Dampak yang timbul pada penerima setelah menerima pesan.',contoh:'Mahasiswa mengetahui bahwa perkuliahan dilakukan online.',ciri:'Bola lampu merah muda di atas penerima.'},
+ umpanbalik:{def:'Respons penerima yang kembali kepada sumber.',contoh:'Mahasiswa menjawab, bertanya, atau memberi emoji.',ciri:'Jalur toska melengkung dari penerima kembali ke sumber.'},
+ gangguan:{def:'Hambatan yang mendistorsi proses penyampaian pesan.',contoh:'Koneksi internet buruk, ruangan bising, pesan tidak jelas.',ciri:'Tiga bentuk di belakang: bintang merah, awan ungu, kubus kuning.'}
+};
+const NOISE={
+ fisik:{nama:'Gangguan fisik',def:'Suara kendaraan, suara musik, koneksi internet yang buruk, atau ruangan yang terlalu bising.',atasi:'Pindah ke tempat yang tenang, matikan sumber bunyi, atau periksa koneksi.'},
+ psikologis:{nama:'Gangguan psikologis',def:'Rasa takut, marah, bosan, atau tidak fokus.',atasi:'Ciptakan suasana nyaman, beri jeda, dan libatkan penerima.'},
+ semantik:{nama:'Gangguan semantik',def:'Perbedaan pemahaman terhadap kata atau istilah yang digunakan.',atasi:'Pakai bahasa sederhana, jelaskan istilah, dan beri contoh.'}
+};
+const MODELS={
+ lasswell:{nama:'Lasswell (1948)',tipe:'line',
+  nodes:[{t:'Who',s:'siapa komunikator'},{t:'Says what',s:'pesan apa'},{t:'In which channel',s:'lewat saluran apa'},{t:'To whom',s:'kepada siapa'},{t:'With what effect',s:'efek apa'}],
+  uraian:'Menggambarkan komunikasi sebagai proses linear searah dengan formula "who – says what – in which channel – to whom – with what effect". Sederhana, namun meletakkan dasar kajian komponen komunikasi (Effendy, 2017).',
+  ciri:['Linear dan searah','Fokus pada komponen komunikasi']},
+ shannon:{nama:'Shannon-Weaver (1949)',tipe:'line',
+  nodes:[{t:'Sumber informasi',s:'asal pesan'},{t:'Pemancar',s:'mengubah pesan jadi sinyal'},{t:'Saluran',s:'sinyal bergerak'},{t:'Penerima',s:'mengubah sinyal jadi pesan'},{t:'Tujuan',s:'pihak yang dituju'}],
+  decor:'noise',
+  uraian:'Menjelaskan komunikasi sebagai pengiriman informasi dari sumber kepada penerima melalui saluran, dengan kemungkinan adanya gangguan. Menjadi dasar banyak model berikutnya karena memasukkan gangguan dan saluran teknis secara eksplisit (Littlejohn & Foss, 2017).',
+  ciri:['Memasukkan gangguan (noise)','Menekankan saluran teknis']},
+ berlo:{nama:'Berlo (SMCR)',tipe:'line',
+  nodes:[{t:'Source',s:'sumber'},{t:'Message',s:'pesan'},{t:'Channel',s:'saluran'},{t:'Receiver',s:'penerima'}],
+  decor:'berlo',
+  uraian:'Dikenal dengan SMCR: Source, Message, Channel, Receiver. Menekankan bahwa kemampuan komunikasi, pengetahuan, sikap, serta latar belakang sosial dan budaya komunikator dan komunikan memengaruhi proses komunikasi.',
+  ciri:['Empat komponen SMCR','Memperhatikan faktor pada sumber dan penerima']},
+ schramm:{nama:'Interaksional Schramm',tipe:'ring',
+  nodes:[{t:'Komunikator A',s:'pengirim'},{t:'Pesan',s:'dikirim'},{t:'Komunikan B',s:'penerima'},{t:'Umpan balik',s:'kembali ke A'}],
+  uraian:'Memandang komunikasi sebagai proses dua arah: pesan bergerak dari pengirim kepada penerima, lalu kembali kepada pengirim melalui umpan balik. Peran komunikator dan komunikan dapat bergantian.',
+  ciri:['Dua arah','Peran bergantian']}
+};
+const ATMOS={
+ kelas:{bg:0x0b1020,ground:0x141c38,label:'Ruang kelas'},
+ kafe:{bg:0x1b1209,ground:0x2a1d10,label:'Kafe'},
+ kampus_malam:{bg:0x070a1a,ground:0x10153a,label:'Kampus malam'},
+ medsos:{bg:0x0b1a1d,ground:0x10282c,label:'Dunia maya'},
+ lapangan:{bg:0x0d1620,ground:0x16222f,label:'Lapangan'}
+};
+/* Bank soal offline (dipakai bila GenAI tidak tersedia) */
+const BANK=[
+ {judul:'Tugas kelompok di kafe',suasana:'kafe',narasi:'Rina mengajak Dimas mengerjakan tugas kelompok di sebuah kafe. Musik di kafe diputar sangat keras sehingga Dimas hanya mendengar sebagian pembagian tugas.',
+  unsur:{sumber:'Rina, ketua kelompok',pesan:'Pembagian tugas bab 2 dan 3',saluran:'Percakapan tatap muka',penerima:'Dimas, anggota kelompok',efek:'Dimas mengerjakan bab yang salah',umpanbalik:'Dimas hanya mengangguk',gangguan:'Musik kafe yang sangat keras'},
+  jenis_saluran:'lisan',jenis_gangguan:'fisik',penjelasan_gangguan:'Musik yang keras adalah hambatan fisik pada suara yang diterima.',
+  tugas:['saluran','gangguan','efek'],
+  extra:{pertanyaan:'Langkah paling tepat agar pesan Rina sampai utuh?',opsi:['Pindah ke sudut yang lebih tenang','Berbicara jauh lebih cepat','Menunggu Dimas bertanya sendiri'],benar:0,penjelasan:'Gangguan fisik diatasi dengan mengurangi sumber bunyi atau pindah ke tempat yang tenang.'}},
+ {judul:'Istilah baru di grup himpunan',suasana:'medsos',narasi:'Ketua himpunan mengirim instruksi di grup WhatsApp mahasiswa baru. Banyak anggota belum mengenal singkatan yang dipakai, lalu menunda pekerjaannya.',
+  unsur:{sumber:'Ketua himpunan',pesan:'Segera kumpulkan LPJ kegiatan',saluran:'Grup WhatsApp himpunan',penerima:'Mahasiswa baru',efek:'Mahasiswa baru menunda tugas',umpanbalik:'Balasan: "LPJ itu apa, Kak?"',gangguan:'Singkatan LPJ tidak dipahami'},
+  jenis_saluran:'digital',jenis_gangguan:'semantik',penjelasan_gangguan:'Singkatan yang dimaknai berbeda atau tidak dipahami adalah gangguan semantik.',
+  tugas:['umpanbalik','pesan','gangguan'],
+  extra:{pertanyaan:'Apa yang sebaiknya dilakukan ketua himpunan?',opsi:['Menjelaskan istilah dan memberi contoh','Mengirim pesan yang sama berulang kali','Mengganti grup menjadi pesan pribadi saja'],benar:0,penjelasan:'Gangguan semantik diatasi dengan menjelaskan istilah memakai bahasa yang dipahami penerima.'}},
+ {judul:'Kuis dadakan lewat Zoom',suasana:'kelas',narasi:'Seorang dosen mengumumkan kuis dadakan di kelas Zoom. Sebagian mahasiswa sangat cemas sehingga sulit menyimak soal yang dibacakan.',
+  unsur:{sumber:'Dosen pengampu',pesan:'Kuis dadakan lima soal',saluran:'Kelas Zoom',penerima:'Mahasiswa semester satu',efek:'Jawaban dikerjakan asal-asalan',umpanbalik:'Chat: "Bu, boleh diulang?"',gangguan:'Mahasiswa cemas dan tidak fokus'},
+  jenis_saluran:'digital',jenis_gangguan:'psikologis',penjelasan_gangguan:'Rasa cemas dan tidak fokus termasuk gangguan psikologis.',
+  tugas:['sumber','saluran','umpanbalik'],
+  extra:{pertanyaan:'Tindakan dosen yang paling membantu?',opsi:['Memberi jeda dan menenangkan kelas sebelum kuis','Menambah jumlah soal','Mematikan kamera semua peserta'],benar:0,penjelasan:'Gangguan psikologis dikurangi dengan menciptakan suasana yang nyaman dan memberi jeda.'}},
+ {judul:'Pengumuman di tengah hujan',suasana:'lapangan',narasi:'Panitia orientasi mengumumkan perubahan lokasi kumpul lewat pengeras suara di lapangan. Hujan deras dan petir membuat sebagian peserta salah menangkap lokasi.',
+  unsur:{sumber:'Panitia orientasi',pesan:'Lokasi kumpul pindah ke aula',saluran:'Pengeras suara',penerima:'Peserta orientasi',efek:'Sebagian peserta salah lokasi',umpanbalik:'Peserta bertanya ke teman',gangguan:'Hujan deras dan suara petir'},
+  jenis_saluran:'lisan',jenis_gangguan:'fisik',penjelasan_gangguan:'Hujan dan petir adalah hambatan fisik pada suara.',
+  tugas:['penerima','gangguan','pesan'],
+  extra:{pertanyaan:'Cara terbaik memastikan pesan diterima?',opsi:['Mengulang pengumuman dan menambah papan informasi','Mengecilkan volume pengeras suara','Menunggu peserta mencari tahu sendiri'],benar:0,penjelasan:'Pengulangan lewat saluran tambahan membantu mengatasi gangguan fisik pada saluran utama.'}}
+];
+function fromBank(i){const b=BANK[i%BANK.length];
+ const tk=b.tugas.map(t=>({target:t,petunjuk:'Cari objek 3D yang '+INFO[t].ciri.toLowerCase().replace(/\.$/,'')+'.',penjelasan:'"'+b.unsur[t]+'" berperan sebagai '+PENDEK[t].toLowerCase()+'. '+INFO[t].def}));
+ return {judul:b.judul,suasana:b.suasana,narasi:b.narasi,unsur:b.unsur,jenis_saluran:b.jenis_saluran,jenis_gangguan:b.jenis_gangguan,penjelasan_gangguan:b.penjelasan_gangguan,tugas_ketuk:tk,soal_tambahan:b.extra,_sumber:'offline'};}
+
+/* ===================== STATE ===================== */
+const S={started:false,stage:0,max:0,t0:0,tEnd:0,finished:false,
+  sel:null,visited:new Set(),
+  sim:{channel:'digital',feedback:false,handled:new Set(),busy:false,last:null,log:[],sends:0,best:0,done:false},
+  model:{key:'lasswell',done:new Set(),swaps:0,hints:0,sel:null,hintText:''},
+  lab:{scn:null,qs:[],qi:0,res:[],ans:null,hint:false,busy:false,err:'',done:0,correct:0,total:0,seen:[],topic:'acak',level:'sedang',source:'',ctl:null,finishedScn:false,aiCount:0}
+};
+let vr=false;
+
+/* ===================== THREE ===================== */
+const canvas=$('#c'),stageEl=$('#stage');
+let renderer,scene,camera,stereo,glOK=true;
+try{renderer=new THREE.WebGLRenderer({canvas,antialias:true});}catch(e){glOK=false;}
+if(!glOK){stageEl.innerHTML='<div class="nogl">Peramban Anda tidak mendukung WebGL, sehingga ruang 3D tidak dapat ditampilkan. Coba peramban lain atau perangkat lain.</div>';}
+const U={}; // objek tiga dimensi
+const clock=glOK?new THREE.Clock():null;
+const cam={theta:.45,phi:1.2,r:20,tx:0,ty:1.8,tz:0};
+const goal={theta:.45,phi:1.2,r:20,tx:0,ty:1.8,tz:0};
+function fitR(hw){const a=(camera&&camera.aspect>0)?camera.aspect:1.5;return clamp(hw/(Math.tan(22.5*Math.PI/180)*a),15,36);}
+const presetMain=()=>({theta:.45,phi:1.2,r:fitR(10.5),tx:0,ty:1.8,tz:0});
+const presetModel=()=>({theta:0,phi:1.4,r:fitR(9.2),tx:0,ty:2.6,tz:0});
+const tmpV=new THREE.Vector3();
+const allLabels=[];
+
+function std(color,o){return new THREE.MeshStandardMaterial(Object.assign({color,roughness:.55,metalness:.1},o||{}));}
+function wrapLines(ctx,text,maxW){
+  const out=[];
+  String(text).split('\n').forEach(par=>{
+    const words=par.split(/\s+/);let line='';
+    words.forEach(w=>{const t=line?line+' '+w:w;if(ctx.measureText(t).width>maxW&&line){out.push(line);line=w;}else line=t;});
+    if(line)out.push(line);
+  });
+  return out;
+}
+function drawLabel(sp){
+  const {cv,text,color,sub}=sp.userData.lab;const ctx=cv.getContext('2d');const W=cv.width,H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='rgba(11,16,32,.86)';const r=26;
+  ctx.beginPath();ctx.moveTo(r,4);ctx.arcTo(W-4,4,W-4,H-4,r);ctx.arcTo(W-4,H-4,4,H-4,r);ctx.arcTo(4,H-4,4,4,r);ctx.arcTo(4,4,W-4,4,r);ctx.closePath();ctx.fill();
+  ctx.lineWidth=5;ctx.strokeStyle=color;ctx.stroke();
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  let size=sub?50:46;let lines;
+  for(;size>=26;size-=4){ctx.font='600 '+size+'px "IBM Plex Sans",sans-serif';lines=wrapLines(ctx,text,W-56);if(lines.length*size*1.15<=(sub?H*.58:H-34))break;}
+  ctx.fillStyle='#e9edfa';
+  const th=lines.length*size*1.15;let y=(sub?H*.40:H/2)-th/2+size*.575;
+  lines.forEach(l=>{ctx.fillText(l,W/2,y);y+=size*1.15;});
+  if(sub){ctx.font='500 30px "IBM Plex Sans",sans-serif';ctx.fillStyle='#9aa7cc';ctx.fillText(sub,W/2,H-34);}
+  sp.material.map.needsUpdate=true;
+}
+function labelSprite(text,color,sub){
+  const cv=document.createElement('canvas');cv.width=512;cv.height=192;
+  const tex=new THREE.CanvasTexture(cv);tex.anisotropy=4;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
+  sp.scale.set(3.1,1.16,1);sp.renderOrder=10;
+  sp.userData.lab={cv,text,color,sub};drawLabel(sp);allLabels.push(sp);return sp;
+}
+function setLabel(sp,text,sub){sp.userData.lab.text=text;sp.userData.lab.sub=sub;drawLabel(sp);}
+function qTex(){const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');x.fillStyle='#ffd24a';x.fillRect(0,0,128,128);x.fillStyle='#3a2a00';x.font='700 100px sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText('?',64,70);return new THREE.CanvasTexture(c);}
+function person(color,scale){
+  const g=new THREE.Group();const m=std(color);
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(.55,.75,1.8,24),m);body.position.y=.9;
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.5,24,18),std(0xf1d3b8));head.position.y=2.35;
+  g.add(body,head);g.scale.setScalar(scale||1);g.userData.mat=m;return g;
+}
+function fat(r,pos){const m=new THREE.Mesh(new THREE.SphereGeometry(r,10,8),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));if(pos)m.position.copy(pos);return m;}
+
+let halo,world,modelGroup,packet,retPacket,sendCurve,retCurve;
+const noiseObjs=[];let labNoise;
+
+if(glOK){
+  scene=new THREE.Scene();scene.background=new THREE.Color(ATMOS.kelas.bg);scene.fog=new THREE.Fog(ATMOS.kelas.bg,26,56);
+  camera=new THREE.PerspectiveCamera(45,1,.1,200);
+  stereo=new THREE.StereoCamera();stereo.aspect=.5;
+  scene.add(new THREE.AmbientLight(0xffffff,.75));
+  const hemi=new THREE.HemisphereLight(0xbcd0ff,0x1a1a30,.55);scene.add(hemi);
+  const dl=new THREE.DirectionalLight(0xffffff,.95);dl.position.set(6,12,8);scene.add(dl);
+  world=new THREE.Group();scene.add(world);
+  const ground=new THREE.Mesh(new THREE.CircleGeometry(17,64),std(ATMOS.kelas.ground,{roughness:.9}));ground.rotation.x=-Math.PI/2;world.add(ground);U.ground=ground;
+  const grid=new THREE.GridHelper(34,34,0x2b365c,0x1c2547);grid.position.y=.01;grid.material.transparent=true;grid.material.opacity=.55;world.add(grid);
+
+  // SUMBER
+  const sumber=new THREE.Group();sumber.userData.key='sumber';
+  const sp=person(COL.sumber);sumber.add(sp);U.sumberBody=sp.userData.mat;
+  const mega=new THREE.Mesh(new THREE.ConeGeometry(.5,1.0,20,1,true),std(0xeeeeee,{side:THREE.DoubleSide}));mega.rotation.z=-Math.PI/2;mega.position.set(1.15,1.9,0);
+  const megaH=new THREE.Mesh(new THREE.CylinderGeometry(.14,.14,.5,10),std(0xff5d5d));megaH.rotation.z=-Math.PI/2;megaH.position.set(.55,1.9,0);
+  sumber.add(mega,megaH,fat(1.6,new THREE.Vector3(0,1.4,0)));
+  sumber.position.set(-7,0,0);world.add(sumber);U.sumber=sumber;
+  // PENERIMA
+  const pen=new THREE.Group();pen.userData.key='penerima';
+  const p1=person(COL.penerima,.95);p1.position.set(0,0,.9);
+  const p2=person(0xc3b8ff,.85);p2.position.set(.9,0,-.9);
+  pen.add(p1,p2,fat(1.9,new THREE.Vector3(.4,1.4,0)));pen.position.set(7,0,0);world.add(pen);U.penerima=pen;U.penMat=[p1.userData.mat,p2.userData.mat];
+  // PESAN
+  const pesan=new THREE.Group();pesan.userData.key='pesan';
+  const bub=new THREE.Mesh(new THREE.BoxGeometry(1.9,1.2,.36),std(COL.pesan,{emissive:COL.pesan,emissiveIntensity:.22}));
+  const tail=new THREE.Mesh(new THREE.ConeGeometry(.26,.5,4),bub.material);tail.rotation.z=Math.PI;tail.position.set(-.5,-.8,0);
+  pesan.add(bub,tail);
+  [-.45,0,.45].forEach(x=>{const d=new THREE.Mesh(new THREE.SphereGeometry(.12,12,10),std(0xffffff));d.position.set(x,0,.22);pesan.add(d);});
+  pesan.add(fat(1.3));
+  pesan.position.set(-4,3.5,0);world.add(pesan);U.pesan=pesan;U.pesanHome=pesan.position.clone();U.pesanMat=bub.material;
+  // SALURAN
+  const sal=new THREE.Group();sal.userData.key='saluran';
+  const tube=new THREE.Mesh(new THREE.CylinderGeometry(.95,.95,8,28,1,true),new THREE.MeshStandardMaterial({color:COL.saluran,transparent:true,opacity:.13,side:THREE.DoubleSide,roughness:.4}));tube.rotation.z=Math.PI/2;sal.add(tube);
+  U.salMats=[tube.material];
+  [-3,-1.5,0,1.5,3].forEach(x=>{const r=new THREE.Mesh(new THREE.TorusGeometry(1,.08,12,48),std(COL.saluran,{emissive:COL.saluran,emissiveIntensity:.35}));r.rotation.y=Math.PI/2;r.position.x=x;sal.add(r);U.salMats.push(r.material);});
+  sal.add(fat(1.6));
+  sal.position.set(0,1.5,0);world.add(sal);U.saluran=sal;
+  // EFEK
+  const efek=new THREE.Group();efek.userData.key='efek';
+  const bulbMat=std(0xffd0d8,{emissive:COL.efek,emissiveIntensity:.35,roughness:.25});
+  const bulb=new THREE.Mesh(new THREE.SphereGeometry(.62,24,18),bulbMat);
+  const base=new THREE.Mesh(new THREE.CylinderGeometry(.3,.3,.4,16),std(0xaaaaaa));base.position.y=-.75;
+  efek.add(bulb,base,fat(1.2));efek.position.set(7.4,4.7,0);world.add(efek);U.efek=efek;U.bulbMat=bulbMat;
+  // UMPAN BALIK
+  retCurve=new THREE.CatmullRomCurve3([new THREE.Vector3(6.2,1.2,1.4),new THREE.Vector3(6.5,1,3.8),new THREE.Vector3(3,.9,5.3),new THREE.Vector3(-3,.9,5.3),new THREE.Vector3(-6.5,1,3.8),new THREE.Vector3(-6.2,1.3,1.5)]);
+  const ub=new THREE.Group();ub.userData.key='umpanbalik';
+  ub.add(new THREE.Mesh(new THREE.TubeGeometry(retCurve,80,.1,8,false),std(COL.umpanbalik,{emissive:COL.umpanbalik,emissiveIntensity:.4})));
+  ub.add(new THREE.Mesh(new THREE.TubeGeometry(retCurve,30,.6,6,false),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false})));
+  const endP=retCurve.getPoint(1),tan=retCurve.getTangent(1);
+  const head=new THREE.Mesh(new THREE.ConeGeometry(.3,.7,12),std(COL.umpanbalik,{emissive:COL.umpanbalik,emissiveIntensity:.4}));head.position.copy(endP);head.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),tan);ub.add(head);
+  world.add(ub);U.umpanbalik=ub;
+  // LABELS
+  const lab=(key,y,pos)=>{const g=U[key];const s=labelSprite(PENDEK[key],HEX(key));s.position.copy(pos||new THREE.Vector3(0,y,0));g.add(s);g.userData.label=s;g.userData.base=PENDEK[key];};
+  lab('sumber',3.9);lab('penerima',3.9);lab('pesan',1.35);lab('saluran',1.9);lab('efek',1.45);lab('umpanbalik',0,new THREE.Vector3(0,1.6,5.3));
+  // GANGGUAN x6
+  const mkNoise=(type)=>{
+    const g=new THREE.Group();g.userData.key='gangguan';g.userData.type=type;
+    if(type==='fisik'){
+      const core=new THREE.Mesh(new THREE.SphereGeometry(.5,16,12),std(COL.gangguan,{emissive:COL.gangguan,emissiveIntensity:.3}));g.add(core);
+      for(let i=0;i<12;i++){const c=new THREE.Mesh(new THREE.ConeGeometry(.2,.8,8),core.material);const d=new THREE.Vector3().setFromSphericalCoords(1,Math.acos(1-2*(i+.5)/12),i*2.4);c.position.copy(d.clone().multiplyScalar(.8));c.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d);g.add(c);}
+    }else if(type==='psikologis'){
+      const m=std(0x7a68e0,{transparent:true,opacity:.78,roughness:.8});
+      [[0,0,0,.65],[.6,.1,.2,.45],[-.55,.2,-.1,.5],[.1,.55,-.1,.4]].forEach(a=>{const s=new THREE.Mesh(new THREE.SphereGeometry(a[3],18,14),m);s.position.set(a[0],a[1],a[2]);g.add(s);});
+    }else{
+      const m=new THREE.MeshStandardMaterial({map:qTex(),roughness:.5});g.add(new THREE.Mesh(new THREE.BoxGeometry(1.1,1.1,1.1),m));
+    }
+    g.add(fat(1.3));return g;
+  };
+  const NP=[['fisik',-5.2,.9,-4.6],['fisik',2.6,.9,-5.6],['psikologis',-2.4,1.3,-5.2],['psikologis',5.6,1.3,-3.4],['semantik',.3,1.2,-3.8],['semantik',-6.4,1.1,-2.0]];
+  NP.forEach((a,i)=>{const g=mkNoise(a[0]);g.position.set(a[1],a[2],a[3]);g.userData.home=g.position.clone();g.userData.i=i;g.userData.ph=rnd(0,6);
+    const s=labelSprite(a[0]==='fisik'?'Fisik':a[0]==='psikologis'?'Psikologis':'Semantik',HEX('gangguan'));s.position.set(0,1.5,0);g.add(s);g.userData.label=s;g.userData.base=s.userData.lab.text;
+    world.add(g);noiseObjs.push(g);});
+  // noise tunggal untuk lab
+  labNoise=new THREE.Group();labNoise.userData.key='gangguan';
+  labNoise.add(new THREE.Mesh(new THREE.IcosahedronGeometry(.95,1),new THREE.MeshBasicMaterial({color:COL.gangguan,wireframe:true})));
+  labNoise.add(new THREE.Mesh(new THREE.SphereGeometry(.4,16,12),std(COL.gangguan,{emissive:COL.gangguan,emissiveIntensity:.5})));
+  labNoise.add(fat(1.4));labNoise.position.set(0,1.6,-3.9);
+  const ls=labelSprite('Gangguan',HEX('gangguan'));ls.position.set(0,1.9,0);labNoise.add(ls);labNoise.userData.label=ls;labNoise.userData.base='Gangguan';
+  labNoise.visible=false;world.add(labNoise);U.labNoise=labNoise;
+  // paket pesan
+  packet=new THREE.Mesh(new THREE.IcosahedronGeometry(.42,1),std(COL.pesan,{emissive:COL.pesan,emissiveIntensity:.6}));packet.visible=false;world.add(packet);
+  retPacket=new THREE.Mesh(new THREE.SphereGeometry(.3,14,10),std(COL.umpanbalik,{emissive:COL.umpanbalik,emissiveIntensity:.7}));retPacket.visible=false;world.add(retPacket);
+  // halo
+  halo=new THREE.Mesh(new THREE.RingGeometry(1.25,1.45,48),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.9,side:THREE.DoubleSide,depthTest:false}));halo.renderOrder=9;halo.visible=false;scene.add(halo);
+  modelGroup=new THREE.Group();modelGroup.visible=false;scene.add(modelGroup);
+}
+let haloTarget=null,haloUntil=0;
+function setHalo(obj,sec){haloTarget=obj;haloUntil=sec?performance.now()+sec*1000:Infinity;if(!obj&&halo)halo.visible=false;}
+
+/* ---------- kamera ---------- */
+function setCam(p,instant){Object.assign(goal,p);if(instant)Object.assign(cam,p);}
+function applyCam(){
+  const k=.12;
+  for(const f of ['theta','phi','r','tx','ty','tz'])cam[f]+=(goal[f]-cam[f])*k;
+  const sp=Math.sin(cam.phi);
+  camera.position.set(cam.tx+cam.r*sp*Math.sin(cam.theta),cam.ty+cam.r*Math.cos(cam.phi),cam.tz+cam.r*sp*Math.cos(cam.theta));
+  camera.lookAt(cam.tx,cam.ty,cam.tz);
+}
+function flyTo(obj){obj.getWorldPosition(tmpV);setCam({tx:tmpV.x,ty:tmpV.y+.9,tz:tmpV.z,r:16});}
+/* pointer */
+const ptrs=new Map();let dragD=0,pinch0=0;
+function onDown(e){canvas.setPointerCapture&&canvas.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});dragD=0;if(ptrs.size===2){const [a,b]=[...ptrs.values()];pinch0=Math.hypot(a.x-b.x,a.y-b.y);}}
+function onMove(e){
+  const p=ptrs.get(e.pointerId);if(!p)return;
+  const dx=e.clientX-p.x,dy=e.clientY-p.y;
+  if(ptrs.size===1){goal.theta-=dx*.006;goal.phi=clamp(goal.phi-dy*.005,.35,1.52);dragD+=Math.abs(dx)+Math.abs(dy);}
+  p.x=e.clientX;p.y=e.clientY;
+  if(ptrs.size===2){const [a,b]=[...ptrs.values()];const d=Math.hypot(a.x-b.x,a.y-b.y);if(pinch0)goal.r=clamp(goal.r*pinch0/d,6,38);pinch0=d;dragD+=10;}
+}
+function onUp(e){
+  const had=ptrs.delete(e.pointerId);
+  if(had&&dragD<6&&ptrs.size===0)pickAt(e);
+}
+function ndcOf(e){const r=canvas.getBoundingClientRect();return new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);}
+const ray=glOK?new THREE.Raycaster():null;
+function visibleDeep(o){while(o){if(!o.visible)return false;o=o.parent;}return true;}
+function pickAt(e){
+  if(!glOK)return;
+  const ndc=vr?new THREE.Vector2(0,0):ndcOf(e);
+  ray.setFromCamera(ndc,camera);
+  const hits=ray.intersectObjects([world,modelGroup],true);
+  for(const h of hits){
+    if(!visibleDeep(h.object))continue;
+    let o=h.object;while(o&&!(o.userData&&o.userData.key))o=o.parent;
+    if(o&&visibleDeep(o)){onPick(o);return;}
+  }
+}
+if(glOK){
+  canvas.addEventListener('pointerdown',onDown);canvas.addEventListener('pointermove',onMove);
+  canvas.addEventListener('pointerup',onUp);canvas.addEventListener('pointercancel',e=>{ptrs.delete(e.pointerId);});
+  canvas.addEventListener('wheel',e=>{e.preventDefault();goal.r=clamp(goal.r*(1+e.deltaY*.001),6,38);},{passive:false});
+}
+/* resize */
+function resize(){
+  if(!glOK)return;
+  const w=stageEl.clientWidth,h=stageEl.clientHeight;if(!w||!h)return;
+  renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));renderer.setSize(w,h,false);
+  camera.aspect=vr?(w/2)/h:w/h;camera.updateProjectionMatrix();
+  if(S.started&&!vr)setCam(S.stage===2?presetModel():presetMain());
+}
+if(glOK){new ResizeObserver(resize).observe(stageEl);window.addEventListener('resize',resize);}
+
+/* ---------- animasi ---------- */
+let anim=null;
+function loop(){
+  requestAnimationFrame(loop);
+  if(!glOK)return;
+  const dt=Math.min(clock.getDelta(),.05),t=clock.elapsedTime;
+  applyCam();
+  for(const sp of allLabels){if(!sp.userData.bs)sp.userData.bs=[sp.scale.x,sp.scale.y];sp.getWorldPosition(tmpV);const f=clamp(tmpV.distanceTo(camera.position)/20,.55,1.2);sp.scale.set(sp.userData.bs[0]*f,sp.userData.bs[1]*f,1);}
+  if(!anim||anim.kind!=='send'){U.pesan.position.y=U.pesanHome.y+Math.sin(t*1.6)*.15;}
+  U.efek.rotation.y=t*.8;
+  if(U.efek.userData.pulse>0){U.efek.userData.pulse-=dt;}
+  noiseObjs.forEach(g=>{
+    const h=g.userData.handled;const sc=g.userData.sc=(g.userData.sc==null?1:g.userData.sc);
+    g.userData.sc+=((h?0.001:1)-sc)*.12;g.scale.setScalar(Math.max(.001,g.userData.sc));
+    g.visible=g.userData.show!==false&&g.userData.sc>.02;
+    g.rotation.y=t*.7+g.userData.ph;g.position.y=g.userData.home.y+Math.sin(t*1.3+g.userData.ph)*.18;
+  });
+  if(U.labNoise.visible){U.labNoise.rotation.y=t*.9;U.labNoise.rotation.x=t*.5;U.labNoise.children[1].scale.setScalar(1+Math.sin(t*5)*.2);}
+  // kirim pesan
+  if(anim&&anim.kind==='send'){
+    anim.t+=dt/3.4;const k=Math.min(anim.t,1);
+    const p=sendCurve.getPoint(k);const noise=1-anim.clarity/100;
+    packet.visible=true;U.pesan.visible=false;
+    packet.position.set(p.x+(Math.random()-.5)*noise*.9,p.y+(Math.random()-.5)*noise*.9,p.z+(Math.random()-.5)*noise*.9);
+    const sc=1+noise*Math.sin(t*30)*.5;packet.scale.setScalar(sc);
+    packet.material.color.setHex(0xffb547).lerp(new THREE.Color(0x777788),noise*.9);packet.material.emissive.copy(packet.material.color);
+    if(k>=1){anim={kind:'arrive',t:0,clarity:anim.clarity,fb:anim.fb};packet.visible=false;}
+  }else if(anim&&anim.kind==='arrive'){
+    anim.t+=dt;const c=anim.clarity/100;
+    U.bulbMat.emissive.setHex(c>.7?0xffe27a:c>.4?0xff9a5a:0xff5a5a);U.bulbMat.emissiveIntensity=.3+c*1.6*Math.min(1,anim.t*2);
+    U.efek.scale.setScalar(.8+c*.6);
+    if(anim.t>.8){if(anim.fb){anim={kind:'ret',t:0,clarity:anim.clarity};}else{endSend();}}
+  }else if(anim&&anim.kind==='ret'){
+    anim.t+=dt/2.2;const k=Math.min(anim.t,1);retPacket.visible=true;retPacket.position.copy(retCurve.getPoint(k));
+    if(k>=1){retPacket.visible=false;endSend();}
+  }
+  // halo
+  if(haloTarget&&performance.now()<haloUntil){
+    haloTarget.getWorldPosition(tmpV);halo.position.copy(tmpV);halo.position.y+=haloTarget.userData.key==='node'?0:1.3;
+    halo.quaternion.copy(camera.quaternion);halo.scale.setScalar(1+Math.sin(t*7)*.1);halo.visible=true;
+    halo.material.color.setHex(haloTarget.userData.hc||0xffffff);
+  }else if(halo)halo.visible=false;
+  // model nodes
+  modelGroup.children.forEach(n=>{if(n.userData.target){n.position.lerp(n.userData.target,.18);}if(n.userData.key==='node'){const s=n.userData.sel?1.08:1;n.scale.lerp(new THREE.Vector3(s,s,s),.2);}});
+  // render
+  const w=stageEl.clientWidth,h=stageEl.clientHeight;
+  if(vr){
+    camera.updateMatrixWorld();stereo.update(camera);
+    renderer.setScissorTest(true);
+    renderer.setViewport(0,0,w/2,h);renderer.setScissor(0,0,w/2,h);renderer.render(scene,stereo.cameraL);
+    renderer.setViewport(w/2,0,w/2,h);renderer.setScissor(w/2,0,w/2,h);renderer.render(scene,stereo.cameraR);
+    renderer.setScissorTest(false);
+  }else{renderer.setViewport(0,0,w,h);renderer.render(scene,camera);}
+}
+
+/* ---------- VR ---------- */
+function setVR(on){
+  vr=on;stageEl.classList.toggle('vr',on);resize();
+  if(on){goal.r=Math.min(goal.r,16);setHud(S.hud||'Ketuk layar untuk memilih objek di tengah.');
+    try{const f=stageEl.requestFullscreen&&stageEl.requestFullscreen();if(f&&f.catch)f.catch(()=>{});}catch(e){}
+    try{screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape').catch(()=>{});}catch(e){}
+  }else{try{if(document.fullscreenElement)document.exitFullscreen();}catch(e){}}
+}
+document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement&&vr){vr=false;stageEl.classList.remove('vr');resize();}});
+function setHud(t){S.hud=t;document.querySelectorAll('.vrcap').forEach(e=>e.textContent=t);const c=$('#cap');c.textContent=t||'';c.hidden=!t;}
+
+/* ===================== PANEL ===================== */
+const panel=$('#panel');
+const STEPS=['Jelajah','Simulasi','Model','Lab AI','Hasil'];
+const MENIT=[4,4,4,5,1];
+function fmt(ms){const s=Math.floor(ms/1000);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}
+setInterval(()=>{if(S.started){$('#clock').textContent=fmt((S.finished?S.tEnd:Date.now())-S.t0);}},500);
+function renderSteps(){
+  $('#steps').innerHTML=STEPS.map((n,i)=>{
+    const done=i<S.max||(i===4&&S.finished);
+    return `<button class="step ${done?'done':''}" data-go="${i}" ${i>S.max||!S.started?'disabled':''} ${i===S.stage&&S.started?'aria-current="step"':''}><i>${done?'✓':i+1}</i>${n}</button>`;
+  }).join('');
+}
+function setMission(t){$('#mission').textContent=t;}
+function render(){
+  renderSteps();
+  if(!S.started){panel.innerHTML=introHTML();return;}
+  panel.innerHTML=[stage1,stage2,stage3,stage4,stage5][S.stage]();
+  const sc=panel.scrollTop;panel.scrollTop=sc;
+}
+function head(n,title){return `<p class="kicker">Misi ${n} dari 4 · sekitar ${MENIT[n-1]} menit</p><h2>${title}</h2>`;}
+function introHTML(){
+  if(!glOK)return `<h2>WebGL tidak tersedia</h2><p class="muted">Peramban ini tidak dapat menampilkan grafik 3D. Buka tautan ini di peramban lain atau di ponsel.</p>`;
+  return `<p class="kicker">Media pembelajaran interaktif</p>
+  <h2>Masuki ruang komunikasi dan lihat pesan bergerak</h2>
+  <p class="muted">Anda berdiri di dalam sebuah peristiwa komunikasi. Putar, dekati, dan ketuk objek 3D untuk memahami unsur, proses, dan model komunikasi. Seluruh pengalaman dirancang selesai dalam 15 sampai 20 menit.</p>
+  <div class="card">
+    <h3>Empat misi</h3>
+    <div class="log" style="gap:6px;font-family:var(--body);font-size:13.5px;color:var(--fg)">
+      <span><b>1 · Jelajah</b> – temukan 7 unsur komunikasi di ruang 3D (4 menit)</span>
+      <span><b>2 · Simulasi</b> – kirim pesan, atasi gangguan, aktifkan umpan balik (4 menit)</span>
+      <span><b>3 · Model</b> – susun model Lasswell, Shannon-Weaver, Berlo, dan Schramm (4 menit)</span>
+      <span><b>4 · Lab AI</b> – AI membuat skenario baru, Anda mengenali unsurnya di 3D (5 menit)</span>
+    </div></div>
+  <button class="btn primary" data-act="start">Mulai belajar</button>
+  <p class="muted small">Skenario Lab AI dibuat oleh Claude melalui akun Anda dan meminta izin satu kali. Bila tidak tersedia, bank soal bawaan dipakai. Gunakan Mode VR dengan kacamata ala Cardboard untuk tampilan stereo.</p>`;
+}
+
+/* ---------- MISI 1 ---------- */
+function stage1(){
+  const sel=S.sel;const left=KEYS.length-S.visited.size;
+  const chips=KEYS.map(k=>`<button class="chip ${S.visited.has(k)?'seen':''} ${sel&&sel.key===k?'on':''}" style="--c:${HEX(k)}" data-act="chip" data-k="${k}"><span class="dot"></span>${PENDEK[k]}</button>`).join('');
+  let info='<div class="card"><p class="muted small">Ketuk objek di ruang 3D atau pilih salah satu chip. Setiap unsur yang sudah dibuka diberi tanda centang.</p></div>';
+  if(sel){const I=INFO[sel.key];
+    info=`<div class="card" style="border-color:${HEX(sel.key)}"><h3 style="color:${HEX(sel.key)}">${NAMA[sel.key]}</h3><p>${I.def}</p><p class="small"><span class="tag">contoh</span> ${I.contoh}</p><p class="small muted">Di ruang 3D: ${I.ciri}</p></div>`;
+    if(sel.key==='gangguan'){
+      info+=Object.entries(NOISE).map(([t,n])=>`<div class="card ${sel.noise===t?'':''}" style="${sel.noise===t?'border-color:var(--gangguan)':''}"><h3>${n.nama}</h3><p class="small">${n.def}</p></div>`).join('');
+    }
+  }
+  return head(1,'Jelajahi tujuh unsur komunikasi')+
+   `<div class="row" style="justify-content:space-between"><span class="small muted">${S.visited.size} dari 7 unsur dibuka</span></div>
+    <div class="bar"><b style="width:${S.visited.size/7*100}%"></b></div>
+    <div class="chips">${chips}</div>${info}
+    <button class="btn primary" data-act="next" ${left?'disabled':''}>${left?`Buka ${left} unsur lagi`:'Lanjut ke simulasi'}</button>`;
+}
+function selectKey(key,noiseType,obj){
+  S.sel={key,noise:noiseType};S.visited.add(key);
+  const o=obj||U[key]||noiseObjs[0];
+  flyTo(o);setHalo(o,6);setHud(NAMA[key]);
+  if(S.stage===0){render();}
+}
+
+/* ---------- MISI 2 ---------- */
+function clarityNow(){const active=6-S.sim.handled.size;return Math.max(10,100-15*active);}
+function stage2(){
+  const s=S.sim,c=clarityNow();
+  const chan=['lisan','tulisan','digital'].map(x=>`<button data-act="chan" data-v="${x}" class="${s.channel===x?'on':''}">${x[0].toUpperCase()+x.slice(1)}</button>`).join('');
+  const last=s.last?`<div class="card ${s.last.clarity>=85?'ok':s.last.clarity<50?'bad':''}"><h3>Pesan diterima: kejelasan ${s.last.clarity}%</h3><p class="small">${s.last.efek}</p><p class="small muted">${s.last.fb}</p></div>`:'';
+  return head(2,'Kirim pesan dan hadapi gangguan')+
+  `<p class="muted small">Ketuk objek gangguan di belakang untuk mengatasinya, pilih saluran, aktifkan umpan balik, lalu kirim pesan. Targetnya kejelasan pesan minimal 85% dengan umpan balik aktif.</p>
+   <div><p class="kicker" style="margin-bottom:6px">Saluran pesan</p><div class="seg">${chan}</div></div>
+   <label class="tog"><input type="checkbox" id="fbTog" ${s.feedback?'checked':''}><span>Umpan balik aktif <span class="muted small">(penerima menjawab kepada sumber)</span></span></label>
+   <div><div class="row" style="justify-content:space-between;margin-bottom:6px"><span class="kicker">Perkiraan kejelasan</span><b style="font:500 13px var(--mono)">${c}%</b></div><div class="bar"><b style="width:${c}%"></b></div>
+     <p class="small muted" style="margin-top:6px">Gangguan teratasi: ${s.handled.size} dari 6</p></div>
+   <div class="row"><button class="btn primary" data-act="send" ${s.busy?'disabled':''}>${s.busy?'Pesan sedang dikirim…':'Kirim pesan'}</button><button class="btn ghost" data-act="resetnoise" ${s.busy?'disabled':''}>Munculkan gangguan lagi</button></div>
+   ${last}
+   ${s.log.length?`<ul class="log">${s.log.slice(-5).map(l=>`<li>${l}</li>`).join('')}</ul>`:''}
+   <button class="btn primary" data-act="next" ${s.done?'':'disabled'}>${s.done?'Lanjut ke model komunikasi':'Capai target untuk melanjutkan'}</button>`;
+}
+function handleNoise(g){
+  const s=S.sim;if(g.userData.handled||s.busy)return;
+  g.userData.handled=true;s.handled.add(g.userData.i);const n=NOISE[g.userData.type];
+  s.log.push(`✓ ${n.nama} diatasi: ${n.atasi}`);setHud(n.nama+' diatasi');setHalo(null);
+  if(S.stage===1)render();
+}
+function setChannel(c){
+  S.sim.channel=c;const col={lisan:0x4fd18b,tulisan:0xf2e3b3,digital:0x5ad1ff}[c];
+  U.salMats.forEach(m=>{m.color.setHex(col);if(m.emissive)m.emissive.setHex(col);});
+  sendCurve=null;
+}
+function startSend(){
+  const s=S.sim;if(s.busy)return;
+  s.busy=true;s.sends++;
+  sendCurve=new THREE.CatmullRomCurve3([new THREE.Vector3(-4,3.5,0),new THREE.Vector3(-2,2.2,.2),new THREE.Vector3(0,1.5,0),new THREE.Vector3(3,1.8,0),new THREE.Vector3(6.2,3.0,0)]);
+  anim={kind:'send',t:0,clarity:clarityNow(),fb:s.feedback};
+  U.pesan.visible=false;setHalo(null);flyTo(U.saluran);setCam({r:fitR(8),tx:0,ty:2,tz:0,theta:.3});
+  setHud('Pesan melewati saluran…');render();
+}
+function endSend(){
+  const s=S.sim,c=anim.clarity,fb=s.feedback;anim=null;
+  s.busy=false;U.pesan.visible=true;packet.visible=false;retPacket.visible=false;U.efek.scale.setScalar(1);
+  const ch={lisan:'secara lisan',tulisan:'secara tertulis',digital:'lewat media digital'}[s.channel];
+  const efek=c>=85?`Dosen menyampaikan pengumuman ${ch}. Efeknya sesuai harapan: mahasiswa memahami bahwa pertemuan minggu depan dilakukan online.`:c>=50?`Sebagian isi pesan sampai. Efeknya belum penuh: mahasiswa masih ragu apakah pertemuan online atau tatap muka.`:`Pesan banyak terdistorsi oleh gangguan. Mahasiswa salah menafsirkan pengumuman.`;
+  const fbT=fb?'Umpan balik tiba: mahasiswa membalas "Siap, Bu. Pertemuan online ya?" sehingga dosen bisa memastikan pemahaman.':'Tanpa umpan balik, dosen tidak tahu apakah pesan dipahami.';
+  s.last={clarity:c,efek,fb:fbT};s.best=Math.max(s.best,c);
+  if(c>=85&&fb&&!s.done){s.done=true;s.log.push('★ Misi 2 tuntas: pesan jelas dan terkonfirmasi.');}
+  setHud(`Kejelasan ${c}%`);setCam(presetMain());render();
+}
+
+/* ---------- MISI 3 ---------- */
+const NODE_COL=[0x4f8cff,0xffb547,0x4fd18b,0xa493ff,0xff7a90];
+function slotPos(m,i){
+  const n=MODELS[m].nodes.length;
+  if(MODELS[m].tipe==='ring'){const ang=[Math.PI,Math.PI/2,0,-Math.PI/2][i];return new THREE.Vector3(Math.cos(ang)*5.2,3.3+Math.sin(ang)*2.6,0);}
+  const gap=n===5?3.35:3.9;return new THREE.Vector3((i-(n-1)/2)*gap,2.6,0);
+}
+function buildModel(key){
+  modelGroup.traverse(o=>{const i=allLabels.indexOf(o);if(i>=0)allLabels.splice(i,1);});
+  while(modelGroup.children.length)modelGroup.remove(modelGroup.children[0]);
+  const M=MODELS[key],n=M.nodes.length;
+  // urutan acak
+  let perm;do{perm=shuffle([...Array(n).keys()]);}while(perm.filter((v,i)=>v===i).length>1);
+  if(S.model.done.has(key))perm=[...Array(n).keys()];
+  S.model.perm=perm;S.model.sel=null;S.model.hintText='';
+  for(let i=0;i<n;i++){ // slot
+    const pl=new THREE.Mesh(new THREE.BoxGeometry(2.7,1.5,.08),new THREE.MeshBasicMaterial({color:0x1c2547,transparent:true,opacity:.9}));
+    pl.position.copy(slotPos(key,i));pl.position.z=-.35;modelGroup.add(pl);
+    const ed=new THREE.LineSegments(new THREE.EdgesGeometry(pl.geometry),new THREE.LineBasicMaterial({color:0x3a4a80}));ed.position.copy(pl.position);modelGroup.add(ed);
+  }
+  // panah antar slot
+  for(let i=0;i<(M.tipe==='ring'?n:n-1);i++){
+    const a=slotPos(key,i),b=slotPos(key,(i+1)%n),d=b.clone().sub(a),len=d.length();d.normalize();
+    const from=a.clone().addScaledVector(d,1.7),L=len-3.4;
+    if(L>.3){const ar=new THREE.ArrowHelper(d,from,L,0x7f8fc4,.5,.4);ar.position.z=-.2;modelGroup.add(ar);}
+  }
+  // node
+  for(let node=0;node<n;node++){
+    const slot=perm.indexOf(node);
+    const g=new THREE.Group();g.userData.key='node';g.userData.node=node;g.userData.hc=NODE_COL[node%5];
+    const box=new THREE.Mesh(new THREE.BoxGeometry(2.4,1.2,.5),std(NODE_COL[node%5],{emissive:NODE_COL[node%5],emissiveIntensity:.12}));
+    g.add(box);
+    const lb=labelSprite(M.nodes[node].t,'#'+NODE_COL[node%5].toString(16).padStart(6,'0'),M.nodes[node].s);lb.scale.set(2.5,.94,1);lb.position.set(0,0,.5);g.add(lb);
+    g.position.copy(slotPos(key,slot));g.userData.target=g.position.clone();g.userData.slot=slot;
+    modelGroup.add(g);
+  }
+  // dekorasi
+  const mk=(txt,col,x,y)=>{const s=labelSprite(txt,col);s.scale.set(2.6,.98,1);s.position.set(x,y,0);modelGroup.add(s);return s;};
+  if(M.decor==='noise'){const p=slotPos(key,2);mk('Sumber gangguan (noise)','#ff6b6b',p.x,p.y+2.2);
+    const o=new THREE.Mesh(new THREE.OctahedronGeometry(.4),std(COL.gangguan,{emissive:COL.gangguan,emissiveIntensity:.5}));o.position.set(p.x,p.y+1.2,0);modelGroup.add(o);}
+  if(M.decor==='berlo'){[0,3].forEach(si=>{const p=slotPos(key,si);['Kemampuan komunikasi','Pengetahuan','Sikap','Sistem sosial-budaya'].forEach((t,i)=>{const s=labelSprite(t,'#9aa7cc');s.scale.set(2.2,.82,1);s.position.set(p.x,p.y+1.45+i*.72,0);modelGroup.add(s);});});}
+  modelGroup.userData.key2=key;
+}
+function modelSolved(){return S.model.perm.every((v,i)=>v===i);}
+function curSlotOfNode(node){return modelGroup.children.find(c=>c.userData.key==='node'&&c.userData.node===node).userData.slot;}
+function nodeObj(node){return modelGroup.children.find(c=>c.userData.key==='node'&&c.userData.node===node);}
+function stage3(){
+  const m=S.model,M=MODELS[m.key];
+  const tabs=Object.keys(MODELS).map(k=>`<button class="chip ${m.key===k?'on':''} ${m.done.has(k)?'seen':''}" style="--c:var(--saluran)" data-act="model" data-k="${k}">${MODELS[k].nama.split(' (')[0]}</button>`).join('');
+  const solved=m.done.has(m.key);
+  const body=solved?`<div class="card ok"><h3>Urutan benar</h3><p class="small">${M.uraian}</p><p class="small"><span class="tag">ciri</span> ${M.ciri.join(' · ')}</p></div>`
+   :`<div class="card"><p class="small">${M.uraian}</p></div><div class="card"><h3>Susun modelnya</h3><p class="small muted">Kotak di ruang 3D sudah teracak. Ketuk dua kotak untuk saling menukar posisi sampai urutan sesuai arah panah${M.tipe==='ring'?' (searah jarum jam, mulai dari kiri)':' (kiri ke kanan)'}.</p>${m.hintText?`<p class="small" style="color:var(--pesan)">${m.hintText}</p>`:''}</div>`;
+  const all=m.done.size===4;
+  return head(3,'Susun empat model komunikasi')+
+   `<div class="chips">${tabs}</div>${body}
+    <div class="row"><span class="small muted">Pertukaran: ${m.swaps} · Petunjuk: ${m.hints}</span>${solved?'':'<button class="btn ghost" data-act="hint">Beri petunjuk</button><button class="btn ghost" data-act="reshuffle">Acak ulang</button>'}</div>
+    <div class="dots">${Object.keys(MODELS).map(k=>`<i class="${m.done.has(k)?'on':''}"></i>`).join('')}</div>
+    <button class="btn primary" data-act="next" ${all?'':'disabled'}>${all?'Lanjut ke Lab AI':`Selesaikan ${4-m.done.size} model lagi`}</button>`;
+}
+function pickNode(o){
+  const m=S.model;if(m.done.has(m.key))return;
+  const node=o.userData.node;
+  if(m.sel==null){m.sel=node;o.userData.sel=true;setHalo(o,60);setHud('Pilih kotak kedua untuk bertukar tempat');return;}
+  if(m.sel===node){o.userData.sel=false;m.sel=null;setHalo(null);return;}
+  const a=nodeObj(m.sel),b=o;const sa=a.userData.slot,sb=b.userData.slot;
+  a.userData.slot=sb;b.userData.slot=sa;a.userData.target=slotPos(m.key,sb);b.userData.target=slotPos(m.key,sa);
+  a.userData.sel=false;m.perm[sa]=node;m.perm[sb]=m.sel;
+  // perm: slot -> node
+  m.perm[sb]=m.sel;m.perm[sa]=node;
+  m.sel=null;m.swaps++;m.hintText='';setHalo(null);
+  if(modelSolved()){m.done.add(m.key);setHud('Model '+MODELS[m.key].nama+' tersusun benar');modelGroup.children.forEach(c=>{if(c.userData.key==='node'){c.userData.sel=false;}});}
+  else setHud('Terus susun…');
+  render();
+}
+function hint(){
+  const m=S.model;m.hints++;
+  const i=m.perm.findIndex((v,idx)=>v!==idx);if(i<0)return;
+  const node=i;const o=nodeObj(node);setHalo(o,5);
+  m.hintText=`Kotak "${MODELS[m.key].nodes[node].t}" seharusnya berada di posisi ke-${node+1}.`;setHud(m.hintText);render();
+}
+
+/* ---------- MISI 4 (Lab GenAI) ---------- */
+const TOPIK={acak:'Acak',kelas:'Perkuliahan',kafe:'Kafe dan tongkrongan',medsos:'Media sosial',organisasi:'Organisasi mahasiswa'};
+function stage4(){
+  const L=S.lab;
+  if(L.busy)return head(4,'Lab skenario AI')+`<div class="card"><h3>Claude sedang menyusun skenario…</h3><p class="small muted">Biasanya 10 sampai 40 detik. AI merancang cerita, memilih jenis gangguan, dan menyiapkan soal untuk ruang 3D.</p></div><button class="btn ghost" data-act="cancelgen">Batalkan</button>`;
+  if(!L.scn){
+    const lv=['mudah','sedang','sulit'].map(x=>`<button data-act="level" data-v="${x}" class="${L.level===x?'on':''}">${x[0].toUpperCase()+x.slice(1)}</button>`).join('');
+    const tp=Object.entries(TOPIK).map(([k,v])=>`<option value="${k}" ${L.topic===k?'selected':''}>${v}</option>`).join('');
+    return head(4,'Lab skenario AI')+
+    `<p class="muted small">Generative AI membuat skenario komunikasi yang berbeda setiap kali. Ruang 3D langsung berubah mengikuti ceritanya: suasana, nama objek, dan jenis gangguan. Tugas Anda mengenali unsurnya.</p>
+     <div><p class="kicker" style="margin-bottom:6px">Tingkat kesulitan</p><div class="seg">${lv}</div></div>
+     <div><label class="kicker" for="topicSel" style="display:block;margin-bottom:6px">Tema skenario</label><select id="topicSel" class="opt" style="width:100%">${tp}</select></div>
+     ${L.err?`<div class="card bad"><p class="small">${esc(L.err)}</p></div>`:''}
+     <button class="btn primary" data-act="gen">Buat skenario dengan AI</button>
+     <p class="small muted">${L.done?`Skenario selesai: ${L.done}. `:''}Selesaikan 2 skenario untuk membuka hasil.</p>
+     ${L.done>=2?'<button class="btn" data-act="next">Lanjut ke hasil</button>':''}`;
+  }
+  const s=L.scn,q=L.qs[L.qi];
+  const dots=`<div class="dots">${L.qs.map((_,i)=>`<i class="${L.res[i]===true?'on':L.res[i]===false?'bad':i===L.qi?'cur':''}"></i>`).join('')}</div>`;
+  const top=`<div class="row" style="justify-content:space-between"><span class="tag">${L.source==='ai'?'Dibuat oleh AI generatif (Claude)':'Bank soal bawaan'}</span><span class="small muted">Suasana: ${ATMOS[s.suasana].label}</span></div>
+    ${L.source==='offline'&&L.note?`<p class="small" style="color:var(--pesan)">${esc(L.note)}</p>`:''}<h2 style="font-size:19px">${esc(s.judul)}</h2><p class="small">${esc(s.narasi)}</p>`;
+  if(L.qi>=L.qs.length){
+    const ok=L.res.filter(Boolean).length;
+    return top+dots+`<div class="card ${ok>=4?'ok':''}"><h3>Skenario selesai: ${ok} dari ${L.qs.length} benar</h3><p class="small">${esc(s.penjelasan_gangguan)}</p></div>
+     <div class="row"><button class="btn primary" data-act="again">Skenario baru dari AI</button>${L.done>=2?'<button class="btn" data-act="next">Lanjut ke hasil</button>':''}</div>`;
+  }
+  let qHTML;
+  if(q.kind==='tap'){
+    qHTML=`<div class="card"><p class="kicker">Soal ${L.qi+1} dari ${L.qs.length} · ketuk objek 3D</p><h3>${esc(q.prompt)}</h3>${L.hint?`<p class="small" style="color:var(--pesan)">Petunjuk: ${esc(q.petunjuk)}</p>`:''}</div>`;
+  }else{
+    qHTML=`<div class="card"><p class="kicker">Soal ${L.qi+1} dari ${L.qs.length} · pilih jawaban</p><h3>${esc(q.prompt)}</h3></div>
+      <div class="opts">${q.opsi.map((o,i)=>{let cl='';if(L.ans!=null){if(i===q.benar)cl='right';else if(i===L.ans.idx)cl='wrong';}return `<button class="opt ${cl}" data-act="opt" data-i="${i}" ${L.ans!=null?'disabled':''}>${esc(o)}</button>`;}).join('')}</div>`;
+  }
+  const fb=L.ans!=null?`<div class="card ${L.ans.ok?'ok':'bad'}"><h3>${L.ans.ok?'Tepat':'Belum tepat'}</h3><p class="small">${esc(q.penjelasan)}</p></div><button class="btn primary" data-act="nextq">${L.qi+1>=L.qs.length?'Lihat ringkasan skenario':'Soal berikutnya'}</button>`
+    :`<button class="btn ghost" data-act="lhint" ${L.hint?'disabled':''}>Minta petunjuk</button>`;
+  return top+dots+qHTML+fb;
+}
+function buildQuestions(s){
+  const qs=[];
+  s.tugas_ketuk.slice(0,3).forEach(t=>qs.push({kind:'tap',target:t.target,prompt:`Ketuk objek 3D yang berperan sebagai ${NAMA[t.target].toUpperCase()}.`,petunjuk:t.petunjuk||INFO[t.target].ciri,penjelasan:t.penjelasan}));
+  const jt=['fisik','psikologis','semantik'];
+  qs.push({kind:'choose',prompt:`Jenis gangguan apa yang terjadi pada "${s.unsur.gangguan}"?`,opsi:jt.map(j=>NOISE[j].nama),benar:jt.indexOf(s.jenis_gangguan),penjelasan:s.penjelasan_gangguan+' ('+NOISE[s.jenis_gangguan].def+')'});
+  const e=s.soal_tambahan;qs.push({kind:'choose',prompt:e.pertanyaan,opsi:e.opsi.slice(0,3),benar:e.benar,penjelasan:e.penjelasan});
+  return qs;
+}
+function applyScenario(s){
+  const u=s.unsur;
+  KEYS.forEach(k=>{if(k!=='gangguan'){const g=U[k];setLabel(g.userData.label,u[k]);}});
+  setLabel(U.labNoise.userData.label,u.gangguan);
+  const A=ATMOS[s.suasana]||ATMOS.kelas;scene.background.setHex(A.bg);scene.fog.color.setHex(A.bg);U.ground.material.color.setHex(A.ground);
+  const hue=Math.random();U.sumberBody.color.setHSL(hue,.62,.58);U.penMat[0].color.setHSL((hue+.35)%1,.55,.62);U.penMat[1].color.setHSL((hue+.5)%1,.5,.7);
+  setChannel(s.jenis_saluran==='lisan'?'lisan':s.jenis_saluran==='tulisan'?'tulisan':'digital');
+  U.labNoise.children[0].material.color.setHex({fisik:0xff6b6b,psikologis:0xb09cff,semantik:0xffd24a}[s.jenis_gangguan]);
+}
+function resetScenarioVisuals(){
+  KEYS.forEach(k=>{const g=U[k]||null;if(g&&g.userData.label)setLabel(g.userData.label,PENDEK[k]);});
+  noiseObjs.forEach(g=>setLabel(g.userData.label,g.userData.base));
+  const A=ATMOS.kelas;scene.background.setHex(A.bg);scene.fog.color.setHex(A.bg);U.ground.material.color.setHex(A.ground);
+  U.sumberBody.color.setHex(COL.sumber);U.penMat[0].color.setHex(COL.penerima);U.penMat[1].color.setHex(0xc3b8ff);
+  setChannel('digital');
+}
+function validScenario(s){
+  try{
+    if(!s||typeof s!=='object')return false;
+    if(!s.unsur||!KEYS.every(k=>typeof s.unsur[k]==='string'&&s.unsur[k].trim()))return false;
+    if(!['fisik','psikologis','semantik'].includes(s.jenis_gangguan))return false;
+    if(typeof s.judul!=='string'||typeof s.narasi!=='string'||typeof s.penjelasan_gangguan!=='string')return false;
+    const tk=s.tugas_ketuk;if(!Array.isArray(tk)||tk.length<3)return false;
+    const seen=new Set();for(const t of tk.slice(0,3)){if(!t||!KEYS.includes(t.target)||seen.has(t.target)||typeof t.penjelasan!=='string')return false;seen.add(t.target);}
+    const e=s.soal_tambahan;if(!e||typeof e.pertanyaan!=='string'||!Array.isArray(e.opsi)||e.opsi.length<3||!e.opsi.every(o=>typeof o==='string')||!Number.isInteger(e.benar)||e.benar<0||e.benar>2||typeof e.penjelasan!=='string')return false;
+    return true;
+  }catch(e){return false;}
+}
+function normScenario(s){
+  KEYS.forEach(k=>{s.unsur[k]=String(s.unsur[k]).trim().slice(0,44);});
+  if(!ATMOS[s.suasana])s.suasana='kelas';
+  s.judul=s.judul.slice(0,70);
+  return s;
+}
+const AI_GUIDE=`Definisi unsur komunikasi menurut modul:
+- Sumber (komunikator): pihak yang mengawali dan menyampaikan pesan.
+- Pesan: simbol verbal maupun nonverbal yang mewakili gagasan, perasaan, atau informasi.
+- Saluran (media): sarana penyampai pesan (suara, tulisan, media digital).
+- Penerima (komunikan): pihak yang menerima dan menginterpretasikan pesan.
+- Efek: dampak pada penerima setelah menerima pesan.
+- Umpan balik: respons penerima yang kembali kepada sumber.
+- Gangguan (noise): hambatan yang mendistorsi pesan; jenisnya fisik (suara bising, koneksi buruk), psikologis (takut, marah, bosan, tidak fokus), atau semantik (perbedaan pemahaman kata atau istilah).`;
+async function generate(){
+  const L=S.lab;L.err='';
+  let sample=null;try{sample=window.claude&&window.claude.use?await window.claude.use('sample'):null;}catch(e){sample=null;}
+  const useBank=(why)=>{const i=Math.floor(Math.random()*BANK.length);L.scn=normScenario(fromBank((L.seen.length+i)%BANK.length));L.source='offline';L.note=why;finishGen();};
+  L.busy=true;L.ctl=new AbortController();render();
+  if(!sample){return useBank('AI tidak tersedia di tampilan ini.');}
+  const topik=L.topic==='acak'?'bebas (pilih konteks mahasiswa Indonesia yang berbeda dari judul sebelumnya)':TOPIK[L.topic];
+  const lvl={mudah:'mudah: pilih 3 unsur yang mudah dikenali (sumber, pesan, saluran, penerima)',sedang:'sedang: campurkan unsur mudah dan satu dari efek atau umpan balik',sulit:'sulit: libatkan gangguan, efek, dan umpan balik; sertakan situasi yang agak mengecoh'}[L.level];
+  const prompt=`Anda adalah perancang soal Pengantar Ilmu Komunikasi untuk mahasiswa Indonesia.
+${AI_GUIDE}
+
+Buat SATU skenario peristiwa komunikasi baru dengan tema: ${topik}. Tingkat: ${lvl}.
+Hindari judul yang sudah dipakai: ${L.seen.join('; ')||'(belum ada)'}. Nomor variasi: ${Math.floor(Math.random()*1e6)}.
+Aturan: bahasa Indonesia; semua teks pendek; setiap label di "unsur" maksimal 40 karakter, konkret, dan tidak memakai kata "sumber", "pesan", "saluran", dsb. sebagai isi; satu jenis gangguan yang jelas dan tidak ambigu; efek adalah perubahan pada penerima; umpan balik adalah respons penerima kepada sumber.
+Balas HANYA satu objek JSON dengan bentuk persis:
+{"judul":"...","suasana":"kelas|kafe|kampus_malam|medsos|lapangan","narasi":"2-3 kalimat","unsur":{"sumber":"...","pesan":"...","saluran":"...","penerima":"...","efek":"...","umpanbalik":"...","gangguan":"..."},"jenis_saluran":"lisan|tulisan|digital","jenis_gangguan":"fisik|psikologis|semantik","penjelasan_gangguan":"1 kalimat","tugas_ketuk":[{"target":"salah satu dari sumber,pesan,saluran,penerima,efek,umpanbalik,gangguan","petunjuk":"petunjuk tanpa menyebut jawaban","penjelasan":"1-2 kalimat mengapa label itu berperan sebagai unsur tersebut"}, ... tepat 3 target berbeda],"soal_tambahan":{"pertanyaan":"...","opsi":["...","...","..."],"benar":0,"penjelasan":"..."}}
+"benar" adalah indeks 0-2 dari opsi yang tepat; acak posisi jawaban benar.`;
+  try{
+    const out=await sample.json(prompt,{signal:L.ctl.signal,cache:false});
+    if(validScenario(out)){L.scn=normScenario(out);L.source='ai';L.aiCount++;finishGen();}
+    else{useBank('Hasil AI tidak sesuai format, dipakai bank soal bawaan.');}
+  }catch(e){
+    if(e&&e.code==='cancelled'){L.busy=false;L.scn=null;render();return;}
+    const m={not_granted:'Izin penggunaan AI tidak diberikan',rate_limited:'Batas penggunaan AI tercapai',session_expired:'Sesi berakhir, masuk ulang'}[e&&e.code]||'AI sedang tidak dapat dihubungi';
+    useBank(m+'. Dipakai bank soal bawaan.');
+  }
+}
+function finishGen(){
+  const L=S.lab;L.busy=false;L.ctl=null;L.qs=buildQuestions(L.scn);L.qi=0;L.res=[];L.ans=null;L.hint=false;L.seen.push(L.scn.judul);
+  applyScenario(L.scn);labSceneState();enterQuestion();render();
+}
+function labSceneState(){
+  noiseObjs.forEach(g=>g.userData.show=false);U.labNoise.visible=true;setCam(presetMain());
+}
+function enterQuestion(){
+  const L=S.lab,q=L.qs[L.qi];setHalo(null);
+  if(q){setHud(q.kind==='tap'?q.prompt:'Jawab di panel, atau keluar dari mode VR.');}
+  setMission('Lab AI · '+(L.scn?L.scn.judul:'buat skenario'));
+}
+function answerTap(o){
+  const L=S.lab,q=L.qs[L.qi];if(!q||q.kind!=='tap'||L.ans)return;
+  const ok=o.userData.key===q.target;L.ans={ok};L.res[L.qi]=ok;L.total++;if(ok)L.correct++;
+  const t=q.target==='gangguan'?U.labNoise:U[q.target];t.userData.hc=ok?0x5be28a:0xffffff;setHalo(t,8);
+  if(!ok){setHud('Objek yang tepat ditandai putih.');}else setHud('Tepat!');
+  render();
+}
+function answerOpt(i){
+  const L=S.lab,q=L.qs[L.qi];if(!q||q.kind!=='choose'||L.ans)return;
+  const ok=i===q.benar;L.ans={ok,idx:i};L.res[L.qi]=ok;L.total++;if(ok)L.correct++;render();
+}
+
+/* ---------- HASIL ---------- */
+function stage5(){
+  const s=S.sim,m=S.model,L=S.lab;
+  const el=fmt((S.finished?S.tEnd:Date.now())-S.t0);
+  const pct=L.total?Math.round(L.correct/L.total*100):0;
+  return `<p class="kicker">Selesai</p><h2>Anda sudah menjelajahi satu peristiwa komunikasi utuh</h2>
+   <div class="stat">
+    <div class="card"><span class="small muted">Waktu belajar</span><b>${el}</b></div>
+    <div class="card"><span class="small muted">Unsur dijelajahi</span><b>${S.visited.size}/7</b></div>
+    <div class="card"><span class="small muted">Kejelasan pesan terbaik</span><b>${s.best}%</b></div>
+    <div class="card"><span class="small muted">Model tersusun</span><b>${m.done.size}/4</b></div>
+    <div class="card"><span class="small muted">Jawaban Lab AI benar</span><b>${L.correct}/${L.total}</b></div>
+    <div class="card"><span class="small muted">Skenario AI</span><b>${L.aiCount}</b></div>
+   </div>
+   <div class="card"><h3>Rangkuman</h3>
+    <p class="small">Komunikasi adalah proses: sumber mengirim pesan lewat saluran kepada penerima, menimbulkan efek, dan memicu umpan balik, sementara gangguan fisik, psikologis, dan semantik dapat mendistorsi pesan di tengah jalan.</p></div>
+   <div class="card scroll-x"><h3>Empat model sekilas</h3><table><thead><tr><th>Model</th><th>Ciri utama</th></tr></thead><tbody>${Object.values(MODELS).map(M=>`<tr><td>${M.nama}</td><td>${M.ciri.join('; ')}</td></tr>`).join('')}</tbody></table></div>
+   <button class="btn" data-act="restart">Ulangi dari awal</button>`;
+}
+
+/* ===================== NAVIGASI & EVENT ===================== */
+function applyStageScene(){
+  const n=S.stage;
+  setHalo(null);resetScenarioVisuals();
+  noiseObjs.forEach(g=>{g.userData.show=(n!==2&&n!==3);});
+  U.labNoise.visible=false;modelGroup.visible=(n===2);world.visible=(n!==2);
+  U.pesan.visible=true;packet.visible=false;retPacket.visible=false;anim=null;S.sim.busy=false;
+  if(n===0){setCam(presetMain());setMission('Misi 1 · Jelajahi 7 unsur');setHud('');}
+  else if(n===1){setCam(presetMain());setMission('Misi 2 · Atasi gangguan, kirim pesan');setHud('');}
+  else if(n===2){buildModel(S.model.key);setCam(presetModel(),true);setMission('Misi 3 · Susun model komunikasi');setHud('Ketuk dua kotak untuk bertukar posisi.');}
+  else if(n===3){setMission('Misi 4 · Lab skenario AI');setHud('');setCam(presetMain());
+    if(S.lab.scn){applyScenario(S.lab.scn);labSceneState();enterQuestion();}}
+  else if(n===4){setCam(presetMain());setMission('Selesai · terima kasih telah belajar');setHud('');}
+}
+function go(n){S.stage=n;applyStageScene();render();panel.scrollTop=0;}
+function onPick(o){
+  const key=o.userData.key;
+  if(!S.started)return;
+  if(vr&&S.stage!==0){ if(key==='node')setHud(MODELS[S.model.key].nodes[o.userData.node].t);else setHud(NAMA[key]||'');return;}
+  if(S.stage===0){
+    if(key==='gangguan')selectKey('gangguan',o.userData.type,o);else selectKey(key,null,o);
+  }else if(S.stage===1){
+    if(key==='gangguan')handleNoise(o);else{setHalo(o,3);setHud(NAMA[key]);}
+  }else if(S.stage===2){
+    if(key==='node')pickNode(o);
+  }else if(S.stage===3){
+    if(S.lab.scn&&!S.lab.busy)answerTap(o);
+  }
+}
+panel.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-act]');if(!b)return;
+  const a=b.dataset.act,L=S.lab;
+  if(a==='start'){S.started=true;S.t0=Date.now();go(0);}
+  else if(a==='chip'){const k=b.dataset.k;selectKey(k,null,k==='gangguan'?noiseObjs[0]:U[k]);}
+  else if(a==='next'){const nx=S.stage+1;S.max=Math.max(S.max,nx);if(nx===4){S.finished=true;S.tEnd=Date.now();}go(nx);}
+  else if(a==='chan'){setChannel(b.dataset.v);render();}
+  else if(a==='send')startSend();
+  else if(a==='resetnoise'){noiseObjs.forEach(g=>{g.userData.handled=false;});S.sim.handled.clear();S.sim.log.push('Gangguan dimunculkan kembali.');render();}
+  else if(a==='model'){S.model.key=b.dataset.k;buildModel(S.model.key);setCam(presetModel());setHalo(null);render();}
+  else if(a==='hint')hint();
+  else if(a==='reshuffle'){buildModel(S.model.key);setHalo(null);render();}
+  else if(a==='level'){L.level=b.dataset.v;render();}
+  else if(a==='gen'||a==='again'){if(a==='again'){L.scn=null;L.finishedScn=false;resetScenarioVisuals();}generate();}
+  else if(a==='cancelgen'){L.ctl&&L.ctl.abort();}
+  else if(a==='lhint'){L.hint=true;const q=L.qs[L.qi];setHud('Petunjuk: '+q.petunjuk);render();}
+  else if(a==='opt')answerOpt(+b.dataset.i);
+  else if(a==='nextq'){
+    L.qi++;L.ans=null;L.hint=false;setHalo(null);
+    if(L.qi>=L.qs.length){L.done++;}
+    enterQuestion();render();
+  }
+  else if(a==='restart'){location.reload();}
+});
+panel.addEventListener('change',e=>{
+  if(e.target.id==='fbTog'){S.sim.feedback=e.target.checked;render();}
+  if(e.target.id==='topicSel'){S.lab.topic=e.target.value;}
+});
+$('#steps').addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(!b||b.disabled)return;const n=+b.dataset.go;if(n===4&&!S.finished){S.finished=true;S.tEnd=Date.now();}go(n);});
+$('#camReset').addEventListener('click',()=>{setCam(S.stage===2?presetModel():presetMain());});
+$('#vrBtn').addEventListener('click',()=>setVR(true));
+$('#vrexit').addEventListener('click',()=>setVR(false));
+
+/* ===================== MULAI ===================== */
+S.hud='';
+if(glOK){
+  resize();setCam(presetMain(),true);applyCam();
+  setMission('Selamat datang di ruang komunikasi');
+  document.fonts&&document.fonts.ready.then(()=>allLabels.forEach(drawLabel));
+  loop();
+}
+render();
+window.__app={S,go,U,noiseObjs,onPick,generate};
+})();
+</script>
+
+</body></html>
